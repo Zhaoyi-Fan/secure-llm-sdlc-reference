@@ -6,8 +6,10 @@ to demonstrate an end-to-end AppSec workflow:
 **threat model → reproduce → explain → fix → regression-test → CI gate**
 
 The application is intentionally ordinary: FastAPI, SQLite, JWT authentication,
-an Ollama-backed tool-calling agent, orders, a knowledge base, and refunds. The
-security evidence—not framework complexity—is the product of this repository.
+a local tool-calling model, orders, a knowledge base, and refunds. LM Studio's
+OpenAI-compatible API is the primary validated path; Ollama remains an optional
+fallback. The security evidence—not framework complexity—is the product of this
+repository.
 
 > `main` is the hardened implementation. The historical `v0-vulnerable` tag is
 > an intentionally unsafe local-lab snapshot and must never be deployed.
@@ -32,7 +34,7 @@ prompt-injection success rate.
 flowchart LR
     C["Signed-in customer"] -->|"Bearer token"| API["FastAPI"]
     API --> AG["Agent orchestrator"]
-    AG -->|"prompt + tool schemas"| LLM["Ollama model"]
+    AG -->|"prompt + tool schemas"| LLM["Local model endpoint"]
     LLM -->|"untrusted tool request"| AL["Capability allowlist"]
     AL --> RT["Read-only agent tools"]
     RT --> DB[("SQLite")]
@@ -46,27 +48,30 @@ output are all treated as untrusted. Authentication identity is injected by
 server-side code and is never accepted from model-controlled arguments.
 
 See [the compact threat model](docs/threat-model.md) and the individual
-[finding-to-fix records](docs/findings).
+[finding-to-fix records](docs/findings). A supplementary
+[sanitized live-model run](docs/live-demo.md) records the exact model,
+integration commit, observed tool sequence and database-state invariants.
 
 ## Run locally
 
 Prerequisites:
 
 - Python 3.12 or later;
-- [Ollama](https://ollama.com);
-- the verified `qwen3.5:4b` Ollama tag, or another tool-capable local model you
+- [LM Studio](https://lmstudio.ai/) with its local server enabled;
+- the standard `qwen/qwen3.6-27b` model, or another tool-capable model you
   explicitly configure.
 
 ```bash
-ollama pull qwen3.5:4b
 python -m venv .venv
 # Windows: .venv\Scripts\activate
 # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Copy `.env.example` to `.env`. Generate a signing secret and paste the output
-after `JWT_SECRET=`:
+In LM Studio, load the model, open **Developer → Local Server**, and start the
+server on `http://127.0.0.1:1234`. Copy `.env.example` to `.env`; its primary
+configuration targets LM Studio's OpenAI-compatible `/v1` API. Generate a
+signing secret and paste the output after `JWT_SECRET=`:
 
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(48))"
@@ -90,16 +95,22 @@ When switching between `v0-vulnerable` and `main`, delete the local demo
 database and run `python -m app.seed` again; this project intentionally does not
 include a production migration framework.
 
+### Optional Ollama fallback
+
+Set `LLM_PROVIDER=ollama`, then configure `OLLAMA_BASE_URL` and `OLLAMA_MODEL`
+in `.env`. The provider adapter converts the same internal tool-call history to
+Ollama's native message format.
+
 ### Local-data statement
 
-The default `OLLAMA_BASE_URL=http://localhost:11434` keeps model requests on the
-loopback interface, and the HTTP client ignores proxy environment variables.
-If you configure a remote Ollama URL, prompts and tool results will leave the
-machine. No claim is made that an arbitrary custom configuration is local-only.
+The default LM Studio and Ollama URLs use the loopback interface, and both HTTP
+clients ignore proxy environment variables. If you configure either provider
+with a remote URL, prompts and tool results will leave the machine. No claim is
+made that an arbitrary custom configuration is local-only.
 
 ## Test
 
-The blocking suite never downloads or calls a live model:
+The 19-test blocking suite never downloads or calls a live model:
 
 ```bash
 pip install -r requirements-dev.txt
@@ -111,13 +122,27 @@ Positive controls confirm that valid own-order reads, ordinary KB searches and
 an explicit authenticated full refund still work. This prevents a false
 security result obtained by simply disabling application functionality.
 
+The optional live demonstration uses a temporary fictional database and the
+same `/login → /chat → agent → provider → tools` application path:
+
+```bash
+python -m scripts.run_live_demo
+```
+
+It is supplementary evidence, not the release gate. See
+[`docs/live-demo.md`](docs/live-demo.md) for the observed standard
+`qwen/qwen3.6-27b` run and the distinction between a model declining an unsafe
+action and the server blocking an attempted unsafe call.
+
 ## Repository evidence
 
 ```text
 app/                         application and hardened policy
 tests/                       deterministic security invariants
+scripts/run_live_demo.py     sanitized live-model validation
 docs/threat-model.md         actors, assets, boundaries and residual risk
 docs/findings/               three finding-to-fix records
+docs/live-demo.md            model/version-bound supplementary evidence
 .github/workflows/           minimal test and security gate
 v0-vulnerable                historical unsafe local-lab tag
 ```

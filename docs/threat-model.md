@@ -17,7 +17,7 @@ flowchart TD
     Partner["External partner content source"]
     API["FastAPI boundary"]
     Agent["Agent orchestrator"]
-    Model["Ollama model"]
+    Model["Local model endpoint"]
     Allowlist["Tool capability allowlist"]
     ReadTools["Scoped read-only tools"]
     Refund["Explicit refund policy"]
@@ -54,8 +54,10 @@ flowchart TD
    model output and model-generated tool arguments are all untrusted.
 3. **Money-movement boundary:** only the explicit authenticated refund endpoint
    reaches the state-changing refund policy. The LLM tool registry cannot.
-4. **Model endpoint:** loopback Ollama is the default. A remote URL changes the
-   data-residency assumption and sends prompts/tool data off-machine.
+4. **Model endpoint:** the primary validated configuration is LM Studio's
+   loopback OpenAI-compatible API; loopback Ollama is also supported. A remote
+   URL changes the data-residency assumption and sends prompts/tool data
+   off-machine.
 
 ## Three principal threats and controls
 
@@ -72,10 +74,11 @@ flowchart TD
 - Authentication of an external partner feed and content moderation are
   outside v1; the compromised article is a documented attack precondition.
 - The CI gate uses a scripted provider and does not score live-model behavior.
+  The documented LM Studio run is supplementary, version-bound evidence.
 - Browser rendering/XSS, cloud IAM, enterprise roles, payment-processor
   integration and production database migrations are outside v1.
-- Changing `OLLAMA_BASE_URL` to a remote host invalidates the default local-data
-  assumption.
+- Changing either provider's base URL to a remote host invalidates the default
+  local-data assumption.
 
 ## Residual risk
 
