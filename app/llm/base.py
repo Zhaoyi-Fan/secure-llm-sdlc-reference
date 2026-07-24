@@ -6,9 +6,10 @@ class LLMProvider(Protocol):
 
     Returns a dict with either:
       {"content": str}                         -- a final answer, or
-      {"tool_calls": [{"name", "arguments"}]}  -- requests to run tools.
-    May also include "assistant_message": the raw provider message, which the
-    agent loop appends to history so multi-turn tool calling stays well-formed.
+      {"tool_calls": [{"id", "name", "arguments"}]} -- normalized tool requests.
+
+    Provider adapters translate between the agent's provider-neutral history
+    and their native wire format. Raw provider messages are never replayed.
     """
 
     def chat(

@@ -9,13 +9,14 @@ from pydantic import BaseModel, ConfigDict, Field
 from . import tools
 from .agent import run_agent
 from .auth import authenticate, create_token, decode_token, validate_auth_config
-from .config import settings
+from .config import settings, validate_llm_config
 from .db import get_conn
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     validate_auth_config()
+    validate_llm_config()
     yield
 
 

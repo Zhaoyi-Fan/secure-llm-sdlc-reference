@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse
 
 
 def _load_dotenv(path: str = ".env") -> None:
@@ -41,6 +42,25 @@ def _bounded_int(
 
 class Settings:
     def __init__(self) -> None:
+        self.llm_provider = os.getenv("LLM_PROVIDER", "ollama").strip().lower()
+        self.openai_compatible_base_url = os.getenv(
+            "OPENAI_COMPATIBLE_BASE_URL",
+            "http://127.0.0.1:1234/v1",
+        )
+        self.openai_compatible_model = os.getenv(
+            "OPENAI_COMPATIBLE_MODEL",
+            "qwen/qwen3.6-27b",
+        )
+        self.openai_compatible_api_key = os.getenv(
+            "OPENAI_COMPATIBLE_API_KEY",
+            "",
+        )
+        self.openai_compatible_max_tokens = _bounded_int(
+            os.getenv("OPENAI_COMPATIBLE_MAX_TOKENS"),
+            default=1_024,
+            minimum=128,
+            maximum=4_096,
+        )
         self.ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         self.ollama_model = os.getenv("OLLAMA_MODEL", "qwen3.5:4b")
         self.jwt_secret = os.getenv("JWT_SECRET", "")
@@ -58,3 +78,29 @@ class Settings:
 
 
 settings = Settings()
+
+
+def _require_http_base_url(value: str, name: str) -> None:
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise RuntimeError(f"{name} must be an absolute HTTP(S) URL")
+
+
+def validate_llm_config() -> None:
+    """Fail before serving requests when the selected model provider is invalid."""
+    if settings.llm_provider == "ollama":
+        _require_http_base_url(settings.ollama_base_url, "OLLAMA_BASE_URL")
+        if not settings.ollama_model.strip():
+            raise RuntimeError("OLLAMA_MODEL must not be empty")
+        return
+    if settings.llm_provider == "openai_compatible":
+        _require_http_base_url(
+            settings.openai_compatible_base_url,
+            "OPENAI_COMPATIBLE_BASE_URL",
+        )
+        if not settings.openai_compatible_model.strip():
+            raise RuntimeError("OPENAI_COMPATIBLE_MODEL must not be empty")
+        return
+    raise RuntimeError(
+        "LLM_PROVIDER must be either 'ollama' or 'openai_compatible'"
+    )
