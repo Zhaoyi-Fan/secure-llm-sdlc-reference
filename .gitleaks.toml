@@ -1,0 +1,11 @@
+title = "SupportAssist secret-scanning configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Exact public placeholder retained only in the v0-vulnerable history"
+regexTarget = "line"
+regexes = [
+  '''JWT_SECRET=dev-only-not-for-production''',
+]

@@ -24,9 +24,23 @@ class OllamaProvider:
         }
         if tools:
             payload["tools"] = tools
-        resp = httpx.post(f"{self.base_url}/api/chat", json=payload, timeout=120)
+        timeout = httpx.Timeout(connect=5, read=120, write=10, pool=5)
+        with httpx.Client(timeout=timeout, trust_env=False) as client:
+            resp = client.post(f"{self.base_url}/api/chat", json=payload)
         resp.raise_for_status()
-        message = resp.json().get("message", {})
+        try:
+            data = resp.json()
+        except ValueError as exc:
+            raise httpx.HTTPError(
+                "local model returned invalid JSON",
+                request=resp.request,
+            ) from exc
+        if not isinstance(data, dict) or not isinstance(data.get("message"), dict):
+            raise httpx.HTTPError(
+                "local model returned an invalid response",
+                request=resp.request,
+            )
+        message = data["message"]
         tool_calls = message.get("tool_calls")
         if tool_calls:
             return {
