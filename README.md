@@ -1,5 +1,7 @@
 # SupportAssist
 
+[![Security CI](https://github.com/Zhaoyi-Fan/secure-llm-sdlc-reference/actions/workflows/security-ci.yml/badge.svg)](https://github.com/Zhaoyi-Fan/secure-llm-sdlc-reference/actions/workflows/security-ci.yml)
+
 SupportAssist is a deliberately small, local-first customer-support agent used
 to demonstrate an end-to-end AppSec workflow:
 
