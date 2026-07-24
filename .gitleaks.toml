@@ -8,4 +8,6 @@ description = "Exact public placeholder retained only in the v0-vulnerable histo
 regexTarget = "line"
 regexes = [
   '''JWT_SECRET=dev-only-not-for-production''',
+  '''^JWT_SECRET=$''',
+  '''JWT_SECRET=\r?\nJWT_TTL_SECONDS=900''',
 ]

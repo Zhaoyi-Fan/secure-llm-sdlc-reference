@@ -35,6 +35,9 @@ jobs:
       - name: Run deterministic security invariants
         run: python -m pytest -q
 
+      - name: Reproduce historical V0 findings safely
+        run: python -m scripts.reproduce_v0
+
       - name: Audit runtime dependencies
         run: python -m pip_audit -r requirements.txt --progress-spinner off
 

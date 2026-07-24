@@ -14,6 +14,32 @@ repository.
 > `main` is the hardened implementation. The historical `v0-vulnerable` tag is
 > an intentionally unsafe local-lab snapshot and must never be deployed.
 
+## Five-minute security check (no LLM required)
+
+The release gate is deterministic: it does not download or call a model. The
+validated interpreter version is Python 3.12.
+
+```bash
+python -m venv .venv
+# Windows PowerShell: .\.venv\Scripts\Activate.ps1
+# macOS/Linux: source .venv/bin/activate
+pip install -r requirements-dev.txt
+pytest -q
+```
+
+The 19 tests cover all three security regressions and their positive controls,
+so the core evidence is reproducible on an ordinary development machine.
+From a complete Git clone that contains the `v0-vulnerable` tag, the historical
+baseline can also be replayed safely without checking it out or starting a
+server:
+
+```bash
+python -m scripts.reproduce_v0
+```
+
+This exports the exact tag into a temporary directory, uses fictional data,
+prints a sanitized result, and deletes the temporary environment on exit.
+
 ## The three cases
 
 | Case | Vulnerable behavior in `v0-vulnerable` | Control on `main` | Deterministic evidence |
@@ -27,6 +53,9 @@ external content reached the model orchestration layer, the model attempted the
 historical `issue_refund` capability, the allowlist rejected it, and the
 database did not change. It does **not** claim to measure a particular model's
 prompt-injection success rate.
+
+For the vulnerable baseline, exact requests, observations and cleanup steps are
+collected in the [V0 reproduction report](docs/v0-reproduction-report.md).
 
 ## Architecture and trust boundary
 
@@ -56,22 +85,33 @@ integration commit, observed tool sequence and database-state invariants.
 
 Prerequisites:
 
-- Python 3.12 or later;
+- Python 3.12 (validated);
 - [LM Studio](https://lmstudio.ai/) with its local server enabled;
 - the standard `qwen/qwen3.6-27b` model, or another tool-capable model you
   explicitly configure.
 
+The validated Qwen model is an approximately 18 GB download and requires
+adequate local RAM/VRAM. Model availability and inference speed depend on the
+host; this hardware-dependent path is optional and is not required for the
+five-minute security check.
+
 ```bash
 python -m venv .venv
-# Windows: .venv\Scripts\activate
+# Windows PowerShell: .\.venv\Scripts\Activate.ps1
 # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
 In LM Studio, load the model, open **Developer → Local Server**, and start the
 server on `http://127.0.0.1:1234`. Copy `.env.example` to `.env`; its primary
-configuration targets LM Studio's OpenAI-compatible `/v1` API. Generate a
-signing secret and paste the output after `JWT_SECRET=`:
+configuration targets LM Studio's OpenAI-compatible `/v1` API. First confirm
+that the configured model ID appears:
+
+```bash
+curl http://127.0.0.1:1234/v1/models
+```
+
+Generate a signing secret and paste the output after `JWT_SECRET=`:
 
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(48))"
@@ -99,7 +139,9 @@ include a production migration framework.
 
 Set `LLM_PROVIDER=ollama`, then configure `OLLAMA_BASE_URL` and `OLLAMA_MODEL`
 in `.env`. The provider adapter converts the same internal tool-call history to
-Ollama's native message format.
+Ollama's native message format. This adapter is implemented and covered by
+deterministic tests, but it has not received the same live-model validation as
+the LM Studio path.
 
 ### Local-data statement
 
@@ -108,13 +150,12 @@ clients ignore proxy environment variables. If you configure either provider
 with a remote URL, prompts and tool results will leave the machine. No claim is
 made that an arbitrary custom configuration is local-only.
 
-## Test
+## Test and optional live-model check
 
-The 19-test blocking suite never downloads or calls a live model:
+The five-minute suite above is the blocking release gate. The dependency audit
+also runs without a live model:
 
 ```bash
-pip install -r requirements-dev.txt
-pytest -q
 pip-audit -r requirements.txt
 ```
 
@@ -139,9 +180,11 @@ action and the server blocking an attempted unsafe call.
 ```text
 app/                         application and hardened policy
 tests/                       deterministic security invariants
+scripts/reproduce_v0.py      isolated deterministic V0 replay
 scripts/run_live_demo.py     sanitized live-model validation
 docs/threat-model.md         actors, assets, boundaries and residual risk
 docs/findings/               three finding-to-fix records
+docs/v0-reproduction-report.md vulnerable-baseline reproduction evidence
 docs/live-demo.md            model/version-bound supplementary evidence
 .github/workflows/           minimal test and security gate
 v0-vulnerable                historical unsafe local-lab tag
