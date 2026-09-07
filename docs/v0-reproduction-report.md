@@ -172,8 +172,13 @@ attempt, observes `tool_not_allowed`, and proves unchanged financial state.
 
 The replay submits a three-column-compatible `UNION SELECT` value to `/kb`.
 V0 interpolates it into SQL and returns rows corresponding to the three
-fictional usernames. The sanitized result reports only those usernames; it
-does not print or retain the returned fictional password hashes.
+fictional usernames. The payload selects a fixed `CASE3_INJECTED_ROW` marker in
+the third column; it does not request, print or retain even fictional password
+hashes.
+
+For the exact code comparison, copy-paste Windows PowerShell checks, sanitized
+expected results and cleanup, use the
+[Case 3 guided V0/V1 lab](case-03-lab.md).
 
 ### Hardened control
 

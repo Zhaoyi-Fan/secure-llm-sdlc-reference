@@ -23,6 +23,7 @@ from fastapi.testclient import TestClient
 
 EXPECTED_V0_COMMIT = "64924b3c413780ddc8812797652a7dc29ba5ebcb"
 INJECTION_MARKER = "CASE2_V0_REPRODUCTION_MARKER"
+SQLI_MARKER = "CASE3_INJECTED_ROW"
 
 
 class V0IndirectInjectionProvider:
@@ -232,8 +233,8 @@ def reproduce() -> dict[str, Any]:
             )
 
             sqli_payload = (
-                "unlikely%' UNION SELECT id, username, password_hash "
-                "FROM users -- "
+                "unlikely%' UNION SELECT id, username, "
+                f"'{SQLI_MARKER}' FROM users -- "
             )
             sqli = client.get(
                 "/kb",
@@ -245,6 +246,7 @@ def reproduce() -> dict[str, Any]:
                     row.get("title")
                     for row in sqli.json()
                     if row.get("title") in {"alice", "bob", "mallory"}
+                    and row.get("body") == SQLI_MARKER
                 }
             )
             sqli_reproduced = exposed_fictional_users == [

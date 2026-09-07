@@ -65,7 +65,7 @@ flowchart TD
 |---|---|---|---|
 | Cross-customer order access (BOLA) | Attacker has a valid account and guesses another order ID | Repository queries include both object ID and authenticated user ID; non-owned objects return 404 | [guided lab](case-01-lab.md) · [`test_case_01_object_authorization.py`](../tests/test_case_01_object_authorization.py) |
 | Indirect prompt injection causes a refund attempt | External-partner KB content is compromised and retrieved by the agent | Server-side capability allowlist; agent exposes read-only `prepare_refund`, while money movement requires a separate authenticated HTTP action | `test_case_02_indirect_prompt_injection.py` |
-| SQL injection through KB query | Authenticated user supplies SQL metacharacters | Parameter binding and literal `LIKE` escaping | `test_case_03_sql_injection.py` |
+| SQL injection through KB query | Authenticated user supplies SQL metacharacters | Parameter binding and literal `LIKE` escaping | [guided lab](case-03-lab.md) · [`test_case_03_sql_injection.py`](../tests/test_case_03_sql_injection.py) |
 
 ## Assumptions and out of scope
 

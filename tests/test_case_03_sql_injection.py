@@ -7,7 +7,7 @@ def test_union_payload_is_treated_as_literal_search_text(
 ) -> None:
     alice = login("alice")
     payload = (
-        "%' UNION SELECT id, username, password_hash, "
+        "%' UNION SELECT id, username, 'CASE3_INJECTED_ROW', "
         "'external_partner', 'untrusted_external_content' FROM users --"
     )
 
@@ -18,6 +18,7 @@ def test_union_payload_is_treated_as_literal_search_text(
     assert all(
         username not in response.text for username in ("alice", "bob", "mallory")
     )
+    assert "CASE3_INJECTED_ROW" not in response.text
 
 
 def test_normal_kb_search_still_works(
