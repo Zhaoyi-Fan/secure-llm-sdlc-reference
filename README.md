@@ -44,11 +44,15 @@ prints a sanitized result, and deletes the temporary environment on exit.
 
 ## The three cases
 
-| Case | Vulnerable behavior in `v0-vulnerable` | Control on `main` | Deterministic evidence |
+| Case | Vulnerable behavior in `v0-vulnerable` | Control on `main` | Evidence |
 |---|---|---|---|
-| Object-level authorization | A customer can read and refund another customer's order | Every data query is scoped by the authenticated principal; failed requests do not mutate state | `tests/test_case_01_object_authorization.py` |
-| Indirect prompt injection / excessive agency | Untrusted retrieved text can induce the agent to call the money-moving refund tool | The LLM capability set contains only a read-only refund preview; the explicit authenticated HTTP path performs the refund | `tests/test_case_02_indirect_prompt_injection.py` |
-| SQL injection | KB search concatenates the query into SQL | Bound parameters plus literal escaping for `LIKE` metacharacters | `tests/test_case_03_sql_injection.py` |
+| [Case 1 — BOLA (API/AppSec)](docs/findings/case-01-object-level-authorization.md) | A customer can read and refund another customer's order | Every data query is scoped by the authenticated principal; failed requests do not mutate state | [guided V0/V1 lab](docs/case-01-lab.md) · [regression test](tests/test_case_01_object_authorization.py) |
+| Case 2 — indirect prompt injection / excessive agency | Untrusted retrieved text can induce the agent to call the money-moving refund tool | The LLM capability set contains only a read-only refund preview; the explicit authenticated HTTP path performs the refund | [`tests/test_case_02_indirect_prompt_injection.py`](tests/test_case_02_indirect_prompt_injection.py) |
+| Case 3 — SQL injection | KB search concatenates the query into SQL | Bound parameters plus literal escaping for `LIKE` metacharacters | [`tests/test_case_03_sql_injection.py`](tests/test_case_03_sql_injection.py) |
+
+Cases 1 and 3 are conventional backend AppSec failures inside an LLM-enabled
+application. Case 2 is the LLM/agent-specific trust-boundary case. The model is
+another untrusted caller; it does not replace API authorization or query safety.
 
 The Case 2 CI test uses a stateful scripted provider. It proves that poisoned
 external content reached the model orchestration layer, the model attempted the
@@ -56,8 +60,11 @@ historical `issue_refund` capability, the allowlist rejected it, and the
 database did not change. It does **not** claim to measure a particular model's
 prompt-injection success rate.
 
-For the vulnerable baseline, exact requests, observations and cleanup steps are
-collected in the [V0 reproduction report](docs/v0-reproduction-report.md).
+For the vulnerable baseline, the safe replay and observed results are collected
+in the [V0 reproduction report](docs/v0-reproduction-report.md). The
+[Case 1 guided lab](docs/case-01-lab.md) adds copy-paste Windows PowerShell
+steps, dynamically discovers the target order, and compares V0 with V1 using
+the same HTTP checks.
 
 ## Architecture and trust boundary
 
@@ -185,9 +192,11 @@ tests/                       deterministic security invariants
 scripts/reproduce_v0.py      isolated deterministic V0 replay
 scripts/run_live_demo.py     sanitized live-model validation
 docs/threat-model.md         actors, assets, boundaries and residual risk
+docs/case-01-lab.md          guided BOLA reproduction against V0 and V1
 docs/findings/               three finding-to-fix records
 docs/v0-reproduction-report.md vulnerable-baseline reproduction evidence
 docs/live-demo.md            model/version-bound supplementary evidence
+scripts/run_case_01_manual.ps1 repeatable loopback-only Case 1 HTTP checks
 .github/workflows/           minimal test and security gate
 v0-vulnerable                historical unsafe local-lab tag
 ```

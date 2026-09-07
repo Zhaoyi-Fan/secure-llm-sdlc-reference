@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from app.db import get_conn
 
 
-def test_customer_can_read_own_order_but_not_another_customers(
+def test_customer_can_read_and_refund_own_order_but_not_another_customers(
     client: TestClient,
     login,
     ids: dict[str, int],
@@ -14,11 +14,29 @@ def test_customer_can_read_own_order_but_not_another_customers(
 
     own_response = client.get(f"/orders/{alice_order}", headers=alice)
     other_response = client.get(f"/orders/{bob_order}", headers=alice)
+    own_refund = client.post(
+        f"/orders/{alice_order}/refund",
+        headers=alice,
+        json={"amount_cents": 19_900},
+    )
 
     assert own_response.status_code == 200
     assert own_response.json()["item"] == "Noise-cancelling headphones"
     assert "user_id" not in own_response.json()
     assert other_response.status_code == 404
+    assert own_refund.status_code == 200
+    assert own_refund.json()["ok"] is True
+    with get_conn() as conn:
+        refund_count = conn.execute(
+            "SELECT COUNT(*) FROM refunds WHERE order_id = ?",
+            (alice_order,),
+        ).fetchone()[0]
+        status = conn.execute(
+            "SELECT status FROM orders WHERE id = ?",
+            (alice_order,),
+        ).fetchone()[0]
+    assert refund_count == 1
+    assert status == "refunded"
 
 
 def test_customer_cannot_refund_another_customers_order(

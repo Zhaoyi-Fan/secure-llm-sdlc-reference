@@ -92,6 +92,11 @@ V0 accepted `current_user_id` in the function signature but did not include it
 in the order lookup. Authentication therefore proved only that Alice was a
 user, not that she was authorized for the selected object.
 
+For the exact code comparison, copy-paste Windows PowerShell HTTP checks,
+expected before/after state and cleanup, use the
+[Case 1 guided V0/V1 lab](case-01-lab.md). It discovers Bob's paid order at
+runtime rather than relying on a seeded numeric ID.
+
 ### Hardened control
 
 `main` scopes every order lookup and refund mutation by both order ID and the
